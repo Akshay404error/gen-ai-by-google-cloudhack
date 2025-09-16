@@ -114,7 +114,7 @@ This project was developed for the **Google Cloud Hackathon**, focusing on **AI-
 
 ### Excel Output Structure:
 | Test Case ID | Test Title | Description | Steps | Expected Result | Priority |
-|-------------|------------|-------------|-------|----------------|----------|
+|-------------|------------|-------------|-`------|----------------|----------|
 | TC001 | Valid Login Test | Test successful authentication | 1. Enter valid credentials<br>2. Click login | Redirect to dashboard | High |
 
 ### JSON Output:
