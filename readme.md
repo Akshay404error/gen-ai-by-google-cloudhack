@@ -14,11 +14,13 @@ This project was developed for the **Google Cloud Hackathon**, focusing on **AI-
 ## ✨ Key Features
 
 - **🤖 AI-Powered Generation**: Uses Groq's Llama 3.1 model via Google Cloud infrastructure
-- **📊 Multiple Output Formats**: Export test cases to Excel or JSON
+- **🗄️ Database-backed**: FastAPI + SQLAlchemy + SQLite (`app.db`) persistence for generated cases
+- **📊 Multiple Output Formats**: Export test cases to CSV / Excel / JSON
 - **🧪 Comprehensive Coverage**: Generates functional, edge, boundary, and error case tests
 - **⚡ Real-time Processing**: Instant test case generation with progress indicators
 - **🔧 Two Testing Modes**: Generate test cases OR run comprehensive system tests
-- **📱 User-Friendly Interface**: Streamlit-based web application
+- **🌐 REST API**: First-class FastAPI backend with rich endpoints, pagination, filtering, and stats
+- **📱 User-Friendly Interface**: Streamlit UI or direct static HTML frontend (`frontend.html`)
 - **☁️ Cloud-Native**: Designed for Google Cloud Platform deployment
 
 ### What's New (Sep 2025)
@@ -27,6 +29,7 @@ This project was developed for the **Google Cloud Hackathon**, focusing on **AI-
 - Caching: Repeats of the same story + settings are cached for faster runs.
 - Inline Editing: Toggle "Enable inline editing" to adjust generated cases directly before export.
 - Excel+ Summary: Exports now include a Summary sheet and highlight High priority rows.
+- FastAPI backend with persistence (SQLite), batch generation, advanced listing, update/delete, and `/stats` endpoint.
 
 ## 🛠️ Technology Stack
 
@@ -262,6 +265,72 @@ print(response.json())
 - `GET /test-cases/{id}` — fetch a single case.
 - `GET /export/csv` — download CSV of all cases.
 - `GET /export/excel` — download Excel of all cases.
+
+### Advanced API
+- `POST /generate/batch`
+  - Request:
+    ```json
+    {
+      "stories": ["Story A", "Story B"],
+      "domain": null,
+      "count_per_story": 3,
+      "use_ai": false,
+      "id_prefix": "TC"
+    }
+    ```
+  - Response: array of created test cases for all stories; external IDs like `TC-01-001`.
+
+- `GET /test-cases/advanced`
+  - Query params: `page`, `page_size`, `sort_by` (id|created_at|priority|test_type), `sort_dir` (asc|desc), `domain`, `priority`, `test_type`, `q` (search in title/description).
+  - Returns `{ items, total, page, page_size }`.
+
+- `PUT /test-cases/{id}`
+  - Partial update of fields. `test_steps` should be a JSON array of strings.
+
+- `DELETE /test-cases/{id}`
+  - Deletes a test case.
+
+- `GET /stats`
+  - Returns totals and breakdowns by priority, type, and domain.
+
+### Authentication (optional)
+If you set `API_KEY` in your `.env` or environment, mutating endpoints require the header `X-API-Key: <your-key>`.
+
+Windows PowerShell examples:
+```powershell
+# Set for current session
+$env:API_KEY = "my-secret"
+
+# curl with header
+curl -X POST http://localhost:8000/generate `
+  -H "Content-Type: application/json" `
+  -H "X-API-Key: $env:API_KEY" `
+  -d '{"user_story":"As a user, ...","use_ai":false}'
+```
+
+### Frontend (no Streamlit)
+- Start API:
+  ```powershell
+  uvicorn server:app --reload --host 0.0.0.0 --port 8000
+  ```
+- Open `frontend.html` directly:
+  ```powershell
+  start .\frontend.html
+  ```
+  If your browser blocks `file://` fetches, serve it:
+  ```powershell
+  python -m http.server 5500
+  start http://localhost:5500/frontend.html
+  ```
+  The frontend will call `http://localhost:8000` by default. To override at runtime (DevTools console):
+  ```js
+  window.API_BASE_OVERRIDE = 'http://localhost:8000';
+  ```
+
+### Troubleshooting
+- 0.0.0.0 in browser: use `http://localhost:8000` instead. `0.0.0.0` is a server bind address, not routable from a browser.
+- CORS/file origin: the backend allows any origin, including `file://` (`null` origin). If your browser blocks it, serve the HTML via `python -m http.server`.
+- Pydantic v2 warning: We use `model_config = ConfigDict(from_attributes=True)` to replace `orm_mode`, and settings ignore extra env vars using `SettingsConfigDict(extra="ignore")`.
 
 ## 🧪 Testing Strategy
 
