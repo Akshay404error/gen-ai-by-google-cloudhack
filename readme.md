@@ -21,6 +21,13 @@ This project was developed for the **Google Cloud Hackathon**, focusing on **AI-
 - **📱 User-Friendly Interface**: Streamlit-based web application
 - **☁️ Cloud-Native**: Designed for Google Cloud Platform deployment
 
+### What's New (Sep 2025)
+
+- Google-themed UI: Select `Google Edition (beta)` from the sidebar to load `frontend.html` via Streamlit Components.
+- Caching: Repeats of the same story + settings are cached for faster runs.
+- Inline Editing: Toggle "Enable inline editing" to adjust generated cases directly before export.
+- Excel+ Summary: Exports now include a Summary sheet and highlight High priority rows.
+
 ## 🛠️ Technology Stack
 
 - **Cloud Platform**: Google Cloud Platform (GCP)
@@ -57,15 +64,37 @@ This project was developed for the **Google Cloud Hackathon**, focusing on **AI-
 3. **Environment Configuration**
    Create a `.env` file with your credentials:
    ```env
-   GROQ_API_KEY=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
-   LANGCHAIN_API_KEY=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
+   GROQ_API_KEY=YOUR_GROQ_API_KEY
+   LANGCHAIN_API_KEY=YOUR_LANGCHAIN_API_KEY
    GOOGLE_CLOUD_PROJECT=your-google-cloud-project-id
    ```
+   Note: Do not commit real API keys to source control. Use environment variables or Google Secret Manager in production.
 
 4. **Run the Application**
+
+   Option A — Streamlit (legacy UI):
    ```bash
    streamlit run app.py
    ```
+   - Open the app in your browser (e.g., http://localhost:8501).
+
+   Option B — FastAPI + Static Frontend (no Streamlit):
+   ```bash
+   # 1) Create .env from example (optional)
+   copy .env.example .env   # Windows
+   # 2) Install deps
+   pip install -r requirements.txt
+   # 3) Start API server
+   uvicorn server:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+   - Then open `frontend.html` directly in your browser (double-click the file or drag-drop into a tab).
+   - The HTML will call the API at `http://localhost:8000` via `fetch()`.
+   - If you run the API elsewhere, set `window.API_BASE_OVERRIDE` in devtools console to your URL.
+
+   API docs: once the API is running, open Swagger UI at:
+   - http://localhost:8000/docs
+   - http://localhost:8000/redoc
 
 ### Google Cloud Setup (Optional)
 
@@ -110,6 +139,15 @@ This project was developed for the **Google Cloud Hackathon**, focusing on **AI-
 - 🔒 Security validation
 - ⚡ Performance considerations
 
+### Inline Editing & Export
+
+- After generation, enable "Enable inline editing" to modify fields inline.
+- Edit steps using multi-line text; changes persist to Excel/CSV/JSON downloads.
+- Excel exports include:
+  - Auto-fit column widths and frozen header.
+  - Conditional formatting: rows with `High` priority are highlighted.
+  - `Summary` sheet with totals and breakdowns by priority, type, and domain.
+
 ## 📊 Output Samples
 
 ### Excel Output Structure:
@@ -146,6 +184,7 @@ Google Cloud Platform
 
 Application Stack
     ├── Frontend: Streamlit UI
+    ├── Optional Google Edition Frontend: `frontend.html` via `streamlit.components.v1`
     ├── Backend: Python FastAPI
     ├── AI Engine: LangGraph + Groq LLM
     └── Export: Pandas + OpenPyXL
@@ -211,11 +250,18 @@ Application Stack
 import requests
 
 response = requests.post(
-    "https://your-app.a.run.app/generate",
+    "http://localhost:8000/generate",
     json={"user_story": "Your user story here"},
-    headers={"Authorization": "Bearer YOUR_TOKEN"}
 )
+print(response.json())
 ```
+
+### REST Endpoints
+- `POST /generate` — body: `{ user_story, domain?, count?, use_ai?, id_prefix? }`. Returns a list of persisted test cases and stores them in SQLite (`app.db`).
+- `GET /test-cases` — list previously generated test cases.
+- `GET /test-cases/{id}` — fetch a single case.
+- `GET /export/csv` — download CSV of all cases.
+- `GET /export/excel` — download Excel of all cases.
 
 ## 🧪 Testing Strategy
 
@@ -238,6 +284,9 @@ response = requests.post(
 - [ ] BigQuery analytics dashboard
 - [ ] JIRA native integration
 - [ ] Multi-language support
+ - [ ] Multi-label domain detection with badges
+ - [ ] Per-test-case "Refine" button with extra instructions
+ - [ ] HTML/PDF export with anchors
 
 ### Q1 2025
 - [ ] AI-powered test execution
@@ -279,3 +328,9 @@ response = requests.post(
 ---
 
 **Happpy coding 💻**
+
+## ❓ Troubleshooting
+
+- GROQ_API_KEY not set: The app will fall back to mock test case generation and show a warning in the UI.
+- Port in use: Streamlit default is 8501. Use `streamlit run app.py --server.port 8502` to change.
+- Excel export errors: Ensure `openpyxl` is installed (it is pinned in `requirements.txt`).

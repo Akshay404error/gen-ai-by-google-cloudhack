@@ -1,6 +1,7 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
-from io import BytesIO
+from io import BytesIO, StringIO
 import time
 from typing import List, TypedDict
 from dotenv import load_dotenv
@@ -10,6 +11,7 @@ from pydantic import BaseModel, Field
 import os
 import json
 import re
+from openpyxl.styles import PatternFill
 
 # Load environment variables
 load_dotenv()
@@ -111,29 +113,77 @@ def detect_domain(user_story: str) -> str:
     return "general"
 
 def export_to_excel(test_cases: List[dict]) -> BytesIO:
-    """Export test cases to Excel with enhanced formatting"""
+    """Export test cases to Excel with enhanced formatting, Summary sheet, and conditional formatting."""
     try:
         df = pd.DataFrame(test_cases)
         
         # Create Excel file
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            # Main sheet
             df.to_excel(writer, index=False, sheet_name='Test Cases')
+            ws = writer.sheets['Test Cases']
             
-            # Format worksheets
-            for sheet_name in writer.sheets:
-                worksheet = writer.sheets[sheet_name]
-                for column in worksheet.columns:
-                    max_length = 0
-                    column_letter = column[0].column_letter
-                    for cell in column:
-                        try:
-                            if len(str(cell.value)) > max_length:
-                                max_length = len(str(cell.value))
-                        except:
-                            pass
-                    adjusted_width = min(max_length + 2, 50)
-                    worksheet.column_dimensions[column_letter].width = adjusted_width
+            # Freeze header and add filter
+            ws.freeze_panes = 'A2'
+            if df.shape[0] > 0 and df.shape[1] > 0:
+                ws.auto_filter.ref = ws.dimensions
+            
+            # Auto column widths
+            for column in ws.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                for cell in column:
+                    try:
+                        if cell.value is not None and len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except Exception:
+                        pass
+                adjusted_width = min(max_length + 2, 50)
+                ws.column_dimensions[column_letter].width = adjusted_width
+
+            # Conditional formatting: highlight High priority rows
+            try:
+                cols = [c.lower() for c in df.columns]
+                if 'priority' in cols:
+                    prio_idx = cols.index('priority') + 1
+                    red_fill = PatternFill(start_color='FFFDE7E9', end_color='FFFDE7E9', fill_type='solid')
+                    for row in range(2, df.shape[0] + 2):  # 1-based with header
+                        cell = ws.cell(row=row, column=prio_idx)
+                        if str(cell.value).strip().lower() == 'high':
+                            # Fill the entire row for visibility
+                            for col in range(1, df.shape[1] + 1):
+                                ws.cell(row=row, column=col).fill = red_fill
+            except Exception:
+                pass
+
+            # Summary sheet
+            try:
+                summary = writer.book.create_sheet('Summary')
+                total = len(df)
+                by_priority = df['priority'].value_counts().to_dict() if 'priority' in df.columns else {}
+                by_type = df['test_type'].value_counts().to_dict() if 'test_type' in df.columns else {}
+                by_domain = df['domain'].value_counts().to_dict() if 'domain' in df.columns else {}
+
+                summary.append(["Metric", "Value"])
+                summary.append(["Total Test Cases", total])
+                summary.append(["High Priority", by_priority.get('High', 0)])
+                summary.append(["Medium Priority", by_priority.get('Medium', 0)])
+                summary.append(["Low Priority", by_priority.get('Low', 0)])
+                summary.append([" ", " "])
+                summary.append(["By Type", "Count"])
+                for k, v in by_type.items():
+                    summary.append([k, int(v)])
+                summary.append([" ", " "])
+                summary.append(["By Domain", "Count"])
+                for k, v in by_domain.items():
+                    summary.append([k, int(v)])
+
+                # Basic widths
+                summary.column_dimensions['A'].width = 24
+                summary.column_dimensions['B'].width = 18
+            except Exception:
+                pass
         
         output.seek(0)
         return output
@@ -141,6 +191,78 @@ def export_to_excel(test_cases: List[dict]) -> BytesIO:
     except Exception as e:
         st.error(f"Excel export failed: {str(e)}")
         return BytesIO()
+
+@st.cache_data(show_spinner=False)
+def cached_generate(
+    user_story: str,
+    domain: str,
+    count: int,
+    model: str,
+    temperature: float,
+    max_tokens: int,
+    extra_instructions: str,
+    use_ai: bool,
+):
+    """Cache wrapper for generation based on inputs."""
+    if use_ai:
+        return generate_ai_test_cases(
+            user_story,
+            domain,
+            count,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            extra_instructions=extra_instructions,
+        )
+    else:
+        return generate_mock_test_cases(user_story, domain, count)
+
+def export_to_csv(test_cases: List[dict]) -> BytesIO:
+    """Export test cases to CSV"""
+    try:
+        df = pd.DataFrame(test_cases)
+        output = BytesIO()
+        output.write(df.to_csv(index=False).encode('utf-8'))
+        output.seek(0)
+        return output
+    except Exception as e:
+        st.error(f"CSV export failed: {str(e)}")
+        return BytesIO()
+
+def parse_user_stories(file) -> List[str]:
+    """Parse uploaded file (.txt, .md, .csv) into a list of user stories.
+    - txt/md: one story per non-empty line
+    - csv: expects a header with 'user_story' column
+    """
+    try:
+        name = file.name.lower()
+        content = file.read()
+        try:
+            text = content.decode('utf-8')
+        except Exception:
+            # Already str
+            text = content if isinstance(content, str) else content.decode(errors='ignore')
+
+        if name.endswith('.csv'):
+            df = pd.read_csv(StringIO(text))
+            col = None
+            for c in df.columns:
+                if c.strip().lower() in ['user_story', 'story', 'requirement']:
+                    col = c
+                    break
+            if not col:
+                st.error("CSV must contain a 'user_story' column")
+                return []
+            stories = [str(x).strip() for x in df[col].tolist() if str(x).strip()]
+            return stories
+        else:
+            # txt / md
+            lines = [ln.strip() for ln in text.splitlines()]
+            stories = [ln for ln in lines if ln]
+            return stories
+    except Exception as e:
+        st.error(f"Failed to parse uploaded file: {e}")
+        return []
 
 def generate_thermal_test_cases(user_story: str, count: int = 5) -> List[dict]:
     """Specialized thermal monitoring test case generator"""
@@ -285,14 +407,20 @@ def generate_mock_test_cases(user_story: str, domain: str = "general", count: in
         }
     ]
 
-def create_test_case_generator(domain: str = "general"):
+def create_test_case_generator(domain: str = "general", model: str = "llama-3.1-8b-instant", temperature: float = 0.2, max_tokens: int = 4000, timeout: int = 30):
     """Create AI test case generator with domain-specific tuning"""
     try:
+        # Ensure API key is present; otherwise, fall back to mock generation
+        groq_key = os.getenv("GROQ_API_KEY", "").strip()
+        if not groq_key:
+            st.warning("GROQ_API_KEY not set. Falling back to mock test case generation.")
+            return None
+
         llm = ChatGroq(
-            model="llama-3.1-8b-instant",
-            temperature=0.3 if domain == "technical" else 0.2,
-            max_tokens=4000,
-            timeout=30,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            timeout=timeout,
             max_retries=2,
         )
         
@@ -302,10 +430,10 @@ def create_test_case_generator(domain: str = "general"):
         st.error(f"Failed to initialize AI model: {e}")
         return None
 
-def generate_ai_test_cases(user_story: str, domain: str = "general", count: int = 5) -> List[dict]:
+def generate_ai_test_cases(user_story: str, domain: str = "general", count: int = 5, *, model: str = "llama-3.1-8b-instant", temperature: float = 0.2, max_tokens: int = 4000, timeout: int = 30, extra_instructions: str = "") -> List[dict]:
     """Generate test cases using AI with domain awareness"""
     try:
-        generator = create_test_case_generator(domain)
+        generator = create_test_case_generator(domain, model=model, temperature=temperature, max_tokens=max_tokens, timeout=timeout)
         if not generator:
             return generate_mock_test_cases(user_story, domain, count)
         
@@ -328,6 +456,8 @@ def generate_ai_test_cases(user_story: str, domain: str = "general", count: int 
         - Additional comments and observations
         
         Focus on {domain}-specific testing aspects and include both positive and negative scenarios.
+        
+        Additional instructions (if any): {extra_instructions}
         """
         
         response = generator.invoke(prompt)
@@ -341,6 +471,14 @@ def generate_ai_test_cases(user_story: str, domain: str = "general", count: int 
             else:
                 tc_dict = test_case
             tc_dict['test_case_id'] = i
+            # Normalize steps to a list of strings
+            steps = tc_dict.get('test_steps')
+            if isinstance(steps, str):
+                # Split on newlines or numbered list patterns
+                parts = [s.strip(" -\t") for s in re.split(r"\n|\r|\d+\.|\- ", steps) if s and s.strip()]
+                tc_dict['test_steps'] = parts
+            elif steps is None:
+                tc_dict['test_steps'] = []
             test_cases_dicts.append(tc_dict)
         
         return test_cases_dicts[:count]
@@ -356,13 +494,37 @@ def main():
     # Sidebar
     with st.sidebar:
         st.header("⚙️ Configuration")
+        st.subheader("UI Mode")
+        ui_mode = st.radio(
+            "Choose interface:",
+            ["Streamlit", "Google Edition (beta)"],
+            index=1,
+            help="Use the Google-themed single-page frontend (static demo) or the native Streamlit UI"
+        )
         
+        mode = st.radio("Mode:", ["Single", "Batch"], horizontal=True, help="Batch lets you upload a file of multiple user stories")
+
         # Domain selection
         domain = st.selectbox(
             "Domain:",
             list(DOMAIN_PROMPTS.keys()),
             help="Select the application domain for better test generation"
         )
+
+        st.divider()
+        st.subheader("🤖 Model Settings")
+        model = st.selectbox(
+            "Model",
+            [
+                "llama-3.1-8b-instant",
+                "llama-3.1-70b-versatile",
+                "llama3-70b-8192",
+            ],
+            index=0,
+            help="Choose the Groq model to use"
+        )
+        temperature = st.slider("Temperature", 0.0, 1.0, 0.2, 0.05, help="Higher = more creative, lower = more deterministic")
+        max_tokens = st.slider("Max tokens", 512, 8192, 4000, 128, help="Upper bound on generated tokens")
         
         # Auto-detect button
         if st.button("🔍 Auto-Detect Domain", help="Automatically detect domain from input"):
@@ -372,14 +534,35 @@ def main():
                 domain = detected
         
         with st.expander("Advanced Options"):
+            num_default = 5
+            if "num_test_cases_override" in st.session_state:
+                try:
+                    num_default = int(st.session_state["num_test_cases_override"])
+                except Exception:
+                    num_default = 5
             num_test_cases = st.slider(
                 "Number of test cases:",
-                min_value=1, max_value=10, value=5
+                min_value=1, max_value=10, value=num_default
             )
             
-            use_ai = st.toggle("Use AI Generation", value=True)
+            use_ai = st.toggle("Use AI Generation", value=st.session_state.get("use_ai_override", True))
             
             st.info("AI uses GROQ API for intelligent test case generation")
+            extra_instructions = st.text_area("Custom guidance for the AI (optional)", placeholder="E.g., include boundary value analysis and OWASP ASVS checks")
+            id_prefix = st.text_input("ID prefix", value="TC", help="Prefix used to build external IDs like TC-001")
+
+        # Session import/export
+        st.header("🗂️ Session")
+        session_to_load = st.file_uploader("Load previous session (.json)", type=["json"], key="session_upload")
+        if session_to_load is not None:
+            try:
+                data = json.loads(session_to_load.read().decode('utf-8'))
+                # Restore minimal session fields
+                st.session_state.user_story = data.get('user_story', '')
+                st.session_state.last_test_cases = data.get('test_cases', [])
+                st.success("Session loaded. Scroll to view results or regenerate.")
+            except Exception as e:
+                st.error(f"Failed to load session: {e}")
         
         # Technical examples
         st.header("🚀 Technical Examples")
@@ -398,20 +581,72 @@ def main():
             st.session_state.user_story = examples[tech_example]
             domain = detect_domain(examples[tech_example])
 
+    # Handle query params from Google Edition to auto-generate
+    auto_generate = False
+    params = st.experimental_get_query_params()
+    if params.get("generate", ["0"]) == ["1"]:
+        # Force native UI to display results
+        ui_mode = "Streamlit"
+        try:
+            # Populate session state
+            story = params.get("story", [""])[0]
+            if story:
+                st.session_state.user_story = story
+            domain_from_qs = params.get("domain", [None])[0]
+            if domain_from_qs:
+                domain = domain_from_qs
+            count_from_qs = params.get("count", [None])[0]
+            if count_from_qs:
+                try:
+                    st.session_state["num_test_cases_override"] = int(count_from_qs)
+                except Exception:
+                    pass
+            use_ai_qs = params.get("use_ai", ["1"])[0]
+            st.session_state["use_ai_override"] = (use_ai_qs == "1")
+            auto_generate = True
+        except Exception as e:
+            st.warning(f"Failed to parse query params: {e}")
+
+    # If Google Edition UI selected (and no auto-generate), render the static HTML and exit
+    if ui_mode == "Google Edition (beta)" and not auto_generate:
+        try:
+            html_path = os.path.join(os.path.dirname(__file__), "frontend.html")
+            with open(html_path, "r", encoding="utf-8") as f:
+                html_content = f.read()
+            components.html(html_content, height=1100, scrolling=True)
+            return
+        except Exception as e:
+            st.error(f"Failed to load Google Edition frontend: {e}")
+
     # Main content
     col1, col2 = st.columns([3, 1])
     
     with col1:
-        user_story = st.text_area(
-            "📝 **Requirement / User Story:**",
-            placeholder="Describe your requirement or user story...",
-            height=150,
-            key="user_story",
-            help="Be specific about functionality, including technical details for better results"
-        )
+        batch_stories = []
+        if 'user_story' not in st.session_state:
+            st.session_state.user_story = ""
+        if st.session_state.get('user_story') is None:
+            st.session_state.user_story = ""
+
+        if 'Single' in locals() or True:
+            user_story = st.text_area(
+                "📝 **Requirement / User Story:**" if mode == "Single" else "📝 (Optional) Single story preview:",
+                placeholder="Describe your requirement or user story...",
+                height=150,
+                key="user_story",
+                help="Be specific about functionality, including technical details for better results"
+            )
+
+        uploaded_file = None
+        if mode == "Batch":
+            uploaded_file = st.file_uploader("Upload stories file (.txt/.md: one per line; .csv: 'user_story' column)", type=["txt", "md", "csv"], key="stories_upload")
+            if uploaded_file is not None:
+                batch_stories = parse_user_stories(uploaded_file)
+                if batch_stories:
+                    st.success(f"Loaded {len(batch_stories)} stories for batch generation")
         
         # Show domain detection
-        if user_story.strip():
+        if mode == "Single" and user_story.strip():
             detected_domain = detect_domain(user_story)
             if detected_domain != "general":
                 st.info(f"🎯 **Detected Domain:** {detected_domain.upper()} - Technical requirements detected!")
@@ -438,9 +673,10 @@ def main():
             </div>
             """, unsafe_allow_html=True)
 
-    # Generate button
-    if st.button("🚀 Generate Test Cases", type="primary", use_container_width=True):
-        if user_story.strip():
+    # Generate button or auto-generate via query params
+    trigger_generation = st.button("🚀 Generate Test Cases", type="primary", use_container_width=True) or auto_generate
+    if trigger_generation:
+        if (mode == "Single" and user_story.strip()) or (mode == "Batch" and batch_stories):
             with st.spinner(f"🧠 Generating {domain} test cases..."):
                 progress_bar = st.progress(0)
                 status_text = st.empty()
@@ -452,21 +688,62 @@ def main():
                     
                     status_text.text("🤖 Generating test cases...")
                     progress_bar.progress(50)
-                    
-                    if use_ai:
-                        test_cases = generate_ai_test_cases(user_story, domain, num_test_cases)
+                    test_cases = []
+                    if mode == "Single":
+                        test_cases = cached_generate(
+                            user_story,
+                            domain,
+                            num_test_cases,
+                            model,
+                            temperature,
+                            max_tokens,
+                            extra_instructions,
+                            use_ai,
+                        )
+                        # Tag with source story
+                        for tc in test_cases:
+                            tc['source_story'] = user_story
                     else:
-                        test_cases = generate_mock_test_cases(user_story, domain, num_test_cases)
+                        # Batch mode
+                        all_cases = []
+                        for idx, story in enumerate(batch_stories, start=1):
+                            status_text.text(f"🤖 Generating test cases ({idx}/{len(batch_stories)})...")
+                            cases = cached_generate(
+                                story,
+                                domain,
+                                num_test_cases,
+                                model,
+                                temperature,
+                                max_tokens,
+                                extra_instructions,
+                                use_ai,
+                            )
+                            for tc in cases:
+                                tc['source_story'] = story
+                            all_cases.extend(cases)
+                        test_cases = all_cases
                     
+                    # Renumber IDs and add external_id with prefix
+                    for idx, tc in enumerate(test_cases, start=1):
+                        tc['test_case_id'] = idx
+                        try:
+                            tc['external_id'] = f"{id_prefix}-{idx:03d}"
+                        except Exception:
+                            tc['external_id'] = f"{id_prefix}-{idx}"
+
                     progress_bar.progress(80)
                     
                     excel_file = export_to_excel(test_cases)
+                    csv_file = export_to_csv(test_cases)
                     progress_bar.progress(100)
                     
                     status_text.text("✅ Generation complete!")
                     
                     # Display results
-                    st.success(f"🎉 Generated {len(test_cases)} {domain} test cases!")
+                    if mode == "Single":
+                        st.success(f"🎉 Generated {len(test_cases)} {domain} test cases!")
+                    else:
+                        st.success(f"🎉 Generated {len(test_cases)} {domain} test cases across {len(batch_stories)} stories!")
                     
                     # Show metrics
                     col1, col2, col3 = st.columns(3)
@@ -478,18 +755,96 @@ def main():
                         high_prio = sum(1 for tc in test_cases if tc.get('priority') == 'High')
                         st.metric("High Priority", high_prio)
                     
+                    # Search
+                    st.subheader("🔍 Search")
+                    search_q = st.text_input("Keyword search (title/description/steps/data/expected)", placeholder="e.g., error, boundary, timestamp")
+                    if search_q:
+                        sq = search_q.lower()
+                        def match(tc):
+                            fields = [
+                                tc.get('test_title', ''), tc.get('description', ''), tc.get('expected_result', ''), tc.get('test_data', ''),
+                            ]
+                            steps = tc.get('test_steps', []) or []
+                            text = "\n".join([*fields, *[str(s) for s in steps]]).lower()
+                            return sq in text
+                        test_cases = [tc for tc in test_cases if match(tc)]
+
+                    # Filters
+                    st.subheader("🔎 Filter Test Cases")
+                    priorities = sorted({tc.get('priority', 'Medium') for tc in test_cases})
+                    types = sorted({tc.get('test_type', 'Functional') for tc in test_cases})
+                    stories_opts = sorted({tc.get('source_story', '') for tc in test_cases}) if test_cases else []
+                    sel_priorities = st.multiselect("Priority", priorities, default=priorities)
+                    sel_types = st.multiselect("Type", types, default=types)
+                    if mode == "Batch" and stories_opts:
+                        sel_stories = st.multiselect("Source Story", stories_opts, default=stories_opts)
+                    else:
+                        sel_stories = None
+
+                    def keep(tc):
+                        ok = tc.get('priority', 'Medium') in sel_priorities and tc.get('test_type', 'Functional') in sel_types
+                        if sel_stories is not None:
+                            ok = ok and (tc.get('source_story', '') in sel_stories)
+                        return ok
+                    filtered_cases = [tc for tc in test_cases if keep(tc)]
+                    st.caption(f"Showing {len(filtered_cases)} of {len(test_cases)} cases")
+
                     # Display test cases
                     st.subheader("📋 Generated Test Cases")
-                    
-                    for tc in test_cases:
+
+                    # Inline editing toggle
+                    enable_edit = st.checkbox("Enable inline editing", value=False, help="Edit fields and apply changes before exporting")
+                    if enable_edit:
+                        # Prepare editable dataframe
+                        editable_records = []
+                        for tc in filtered_cases:
+                            rec = tc.copy()
+                            steps = rec.get('test_steps') or []
+                            rec['test_steps_text'] = "\n".join(str(s) for s in steps)
+                            editable_records.append(rec)
+                        edit_df = pd.DataFrame(editable_records)
+
+                        # Choose columns to show/edit
+                        cols_to_show = [
+                            'test_case_id', 'external_id', 'test_title', 'description', 'preconditions',
+                            'test_steps_text', 'test_data', 'expected_result', 'priority', 'test_type', 'domain', 'comments'
+                        ]
+                        cols_existing = [c for c in cols_to_show if c in edit_df.columns]
+                        edited = st.data_editor(
+                            edit_df[cols_existing],
+                            num_rows='fixed',
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+
+                        if st.button("Apply edits", type="secondary"):
+                            # Map edits back to original test_cases
+                            edited_cases = edited.to_dict(orient='records')
+                            tc_map = {tc['test_case_id']: tc for tc in test_cases}
+                            for rec in edited_cases:
+                                tcid = rec.get('test_case_id')
+                                if tcid in tc_map:
+                                    target = tc_map[tcid]
+                                    for k, v in rec.items():
+                                        if k == 'test_steps_text':
+                                            steps_list = [s.strip() for s in str(v).splitlines() if s.strip()]
+                                            target['test_steps'] = steps_list
+                                        else:
+                                            target[k] = v
+                            st.success("Edits applied. Downloads will include updated content.")
+
+                    # Non-editable expanders view
+                    for tc in filtered_cases:
                         with st.expander(f"TC-{tc['test_case_id']}: {tc['test_title']} ({tc['priority']})"):
                             st.write(f"**Description:** {tc['description']}")
                             st.write(f"**Type:** {tc['test_type']} | **Domain:** {tc['domain']}")
-                            
-                            st.write("**Steps:**")
+                            if tc.get('source_story'):
+                                st.write(f"**Source Story:** {tc['source_story']}")
+                            if tc.get('external_id'):
+                                st.write(f"**External ID:** {tc['external_id']}")
+                            st.write("**Steps:")
                             for i, step in enumerate(tc.get('test_steps', []), 1):
                                 st.write(f"{i}. {step}")
-                            
                             st.write(f"**Expected:** {tc['expected_result']}")
                             st.write(f"**Data:** {tc['test_data']}")
                             st.write(f"**Comments:** {tc['comments']}")
@@ -497,28 +852,61 @@ def main():
                     # Download options
                     st.subheader("📥 Download Options")
                     
-                    col1, col2 = st.columns(2)
+                    export_filtered = st.checkbox("Export filtered only", value=False, help="If enabled, downloads will include only the filtered subset above")
+                    data_for_export = filtered_cases if export_filtered else test_cases
+
+                    col1, col2, col3 = st.columns(3)
                     with col1:
                         st.download_button(
                             label="💾 Download Excel",
-                            data=excel_file.getvalue(),
-                            file_name=f"test_cases_{domain}.xlsx",
+                            data=export_to_excel(data_for_export).getvalue(),
+                            file_name=(f"test_cases_{domain}.xlsx" if mode == "Single" else f"test_cases_{domain}_batch.xlsx"),
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                         )
                     
                     with col2:
-                        json_data = json.dumps(test_cases, indent=2)
+                        json_data = json.dumps(data_for_export, indent=2)
                         st.download_button(
                             label="📄 Download JSON",
                             data=json_data,
-                            file_name=f"test_cases_{domain}.json",
+                            file_name=(f"test_cases_{domain}.json" if mode == "Single" else f"test_cases_{domain}_batch.json"),
                             mime="application/json"
                         )
+                    with col3:
+                        st.download_button(
+                            label="🧾 Download CSV",
+                            data=export_to_csv(data_for_export).getvalue(),
+                            file_name=(f"test_cases_{domain}.csv" if mode == "Single" else f"test_cases_{domain}_batch.csv"),
+                            mime="text/csv"
+                        )
+
+                    with st.expander("👀 View JSON (copy-friendly)"):
+                        st.code(json.dumps(data_for_export, indent=2), language="json")
+
+                    # Save session
+                    st.subheader("💾 Save Session")
+                    session_payload = {
+                        "user_story": user_story,
+                        "mode": mode,
+                        "domain": domain,
+                        "num_test_cases": num_test_cases,
+                        "use_ai": use_ai,
+                        "test_cases": test_cases,
+                    }
+                    st.download_button(
+                        label="Save session as JSON",
+                        data=json.dumps(session_payload, indent=2).encode('utf-8'),
+                        file_name="test_generation_session.json",
+                        mime="application/json"
+                    )
                 
                 except Exception as e:
                     st.error(f"Error during generation: {str(e)}")
         else:
-            st.warning("⚠️ Please enter a requirement or user story")
+            if mode == "Single":
+                st.warning("⚠️ Please enter a requirement or user story")
+            else:
+                st.warning("⚠️ Please upload a file containing user stories for batch generation")
 
 if __name__ == "__main__":
     main()

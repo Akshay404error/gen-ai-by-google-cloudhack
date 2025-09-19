@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Test Case Generator - Google Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600;700&family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        :root {
+            /* Google Material Design 3 Color Palette */
+            --md-sys-color-primary: #1a73e8;
+            --md-sys-color-on-primary: #ffffff;
+            --md-sys-color-primary-container: #d2e3fc;
+            --md-sys-color-on-primary-container: #041e49;
+            --md-sys-color-secondary: #34a853;
+            --md-sys-color-on-secondary: #ffffff;
+            --md-sys-color-secondary-container: #c8e6c9;
+            --md-sys-color-tertiary: #fbbc04;
+            --md-sys-color-on-tertiary: #1f1f1f;
+            --md-sys-color-error: #ea4335;
+            --md-sys-color-on-error: #ffffff;
+            --md-sys-color-surface: #fefbff;
+            --md-sys-color-on-surface: #1c1b1f;
+            --md-sys-color-surface-variant: #f4f4f4;
+            --md-sys-color-outline: #79747e;
+            --md-sys-color-surface-container: #ffffff;
+            --md-sys-color-surface-container-low: #f7f2fa;
+            --md-sys-color-surface-container-high: #ece6f0;
+            --google-grey-50: #fafafa;
+            --google-grey-100: #f5f5f5;
+            --google-grey-200: #eeeeee;
+            --google-grey-300: #e0e0e0;
+            --google-grey-400: #bdbdbd;
+            --google-grey-500: #9e9e9e;
+            --google-grey-600: #757575;
+            --google-grey-700: #616161;
+            --google-grey-800: #424242;
+            --google-grey-900: #212121;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Google Sans', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--google-grey-50) 0%, var(--md-sys-color-surface-container-low) 100%);
+            color: var(--md-sys-color-on-surface);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Enhanced Login Page */
+        .login-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="1.5" fill="rgba(255,255,255,0.1)"/><circle cx="40" cy="80" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+            animation: float 20s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        .login-container {
+            background: var(--md-sys-color-surface);
+            border-radius: 28px;
+            padding: 48px 40px;
+            max-width: 440px;
+            width: 90%;
+            box-shadow: 
+                0 1px 3px rgba(0,0,0,0.12),
+                0 1px 2px rgba(0,0,0,0.24),
+                0 8px 32px rgba(0,0,0,0.1);
+            position: relative;
+            backdrop-filter: blur(10px);
+            z-index: 1;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-logo {
+            font-size: 48px;
+            margin-bottom: 16px;
+            background: linear-gradient(45deg, var(--md-sys-color-primary), var(--md-sys-color-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-title {
+            font-size: 28px;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 8px;
+        }
+
+        .login-subtitle {
+            font-size: 16px;
+            color: var(--md-sys-color-outline);
+            font-weight: 400;
+        }
+
+        /* Enhanced Form Styles */
+        .form-group {
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 16px 16px 16px 48px;
+            border: 2px solid var(--google-grey-300);
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: inherit;
+            background: var(--md-sys-color-surface);
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+        }
+
+        .form-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--md-sys-color-outline);
+            font-size: 20px;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--md-sys-color-outline);
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        /* Enhanced Buttons */
+        .btn {
+            padding: 16px 24px;
+            border-radius: 24px;
+            font-size: 16px;
+            font-weight: 500;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.1);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .btn:hover::before {
+            opacity: 1;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, var(--md-sys-color-primary), #4285f4);
+            color: var(--md-sys-color-on-primary);
+            box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(26, 115, 232, 0.4);
+        }
+
+        .social-login {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .btn-social {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--google-grey-300);
+            background: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .btn-google:hover {
+            border-color: var(--md-sys-color-error);
+            color: var(--md-sys-color-error);
+        }
+
+        .btn-facebook:hover {
+            border-color: #4267B2;
+            color: #4267B2;
+        }
+
+        /* Main App Enhanced Styles */
+        .app-container {
+            display: none;
+            min-height: 100vh;
+            background: var(--google-grey-50);
+        }
+
+        .app-header {
+            background: var(--md-sys-color-surface);
+            padding: 16px 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .app-logo {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--md-sys-color-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 24px;
+            padding: 24px;
+            min-height: calc(100vh - 80px);
+        }
+
+        /* Enhanced Sidebar */
+        .sidebar {
+            background: var(--md-sys-color-surface);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+            height: fit-content;
+            position: sticky;
+            top: 104px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 32px;
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-select, .form-range {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--google-grey-300);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            background: var(--md-sys-color-surface);
+            margin-bottom: 16px;
+        }
+
+        .form-select:focus, .form-range:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+        }
+
+        /* Enhanced Main Content */
+        .main-content {
+            background: var(--md-sys-color-surface);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+        }
+
+        .page-title {
+            font-size: 40px;
+            font-weight: 300;
+            color: var(--md-sys-color-primary);
+            text-align: center;
+            margin-bottom: 16px;
+            background: linear-gradient(45deg, var(--md-sys-color-primary), var(--md-sys-color-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .page-subtitle {
+            text-align: center;
+            font-size: 18px;
+            color: var(--md-sys-color-outline);
+            margin-bottom: 40px;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 32px;
+            margin-bottom: 32px;
+        }
+
+        .textarea-enhanced {
+            width: 100%;
+            min-height: 180px;
+            padding: 16px;
+            border: 2px solid var(--google-grey-300);
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            background: var(--md-sys-color-surface-variant);
+        }
+
+        .textarea-enhanced:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+        }
+
+        /* Enhanced Cards */
+        .card {
+            background: var(--md-sys-color-surface);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+        }
+
+        .alert {
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin: 16px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-info {
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            border-left: 4px solid var(--md-sys-color-primary);
+        }
+
+        .alert-success {
+            background: var(--md-sys-color-secondary-container);
+            color: var(--md-sys-color-on-secondary);
+            border-left: 4px solid var(--md-sys-color-secondary);
+        }
+
+        /* Enhanced Metrics */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 32px 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, var(--md-sys-color-primary-container), var(--md-sys-color-surface-container));
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--md-sys-color-primary), var(--md-sys-color-secondary));
+        }
+
+        .metric-label {
+            font-size: 14px;
+            color: var(--md-sys-color-outline);
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 300;
+            color: var(--md-sys-color-primary);
+            line-height: 1;
+        }
+
+        /* Enhanced Test Cases */
+        .test-case {
+            background: var(--md-sys-color-surface);
+            border: 1px solid var(--google-grey-300);
+            border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .test-case:hover {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+
+        .test-case-header {
+            padding: 16px 20px;
+            background: var(--md-sys-color-surface-variant);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 500;
+        }
+
+        .test-case-content {
+            padding: 20px;
+            border-top: 1px solid var(--google-grey-200);
+            display: none;
+        }
+
+        .test-case.expanded .test-case-content {
+            display: block;
+        }
+
+        .priority-high {
+            color: var(--md-sys-color-error);
+            font-weight: 600;
+        }
+
+        .priority-medium {
+            color: var(--md-sys-color-tertiary);
+            font-weight: 600;
+        }
+
+        /* Enhanced Download Section */
+        .download-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 32px;
+        }
+
+        .btn-download {
+            background: var(--md-sys-color-surface-variant);
+            color: var(--md-sys-color-on-surface);
+            border: 2px solid var(--google-grey-300);
+            padding: 12px 16px;
+        }
+
+        .btn-download:hover {
+            background: var(--md-sys-color-secondary-container);
+            border-color: var(--md-sys-color-secondary);
+            color: var(--md-sys-color-secondary);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                padding: 16px;
+            }
+            
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .social-login {
+                flex-direction: column;
+            }
+
+            .download-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Enhanced Login Page -->
+    <div class="login-wrapper" id="login-page">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="login-logo">🧪</div>
+                <h1 class="login-title">Welcome Back</h1>
+                <p class="login-subtitle">Sign in to AI Test Case Generator</p>
+            </div>
+
+            <form onsubmit="return handleLogin(event)">
+                <div class="social-login">
+                    <button type="button" class="btn btn-social btn-google" onclick="socialLogin('google')">
+                        <span class="material-icons">account_circle</span>
+                        Google
+                    </button>
+                    <button type="button" class="btn btn-social btn-facebook" onclick="socialLogin('facebook')">
+                        <span class="material-icons">facebook</span>
+                        Facebook
+                    </button>
+                </div>
+
+                <div style="text-align: center; margin: 24px 0; color: var(--md-sys-color-outline);">or continue with</div>
+
+                <div class="form-group">
+                    <span class="material-icons form-icon">person</span>
+                    <input type="text" id="username" class="form-input" placeholder="Username" required>
+                </div>
+
+                <div class="form-group">
+                    <span class="material-icons form-icon">lock</span>
+                    <input type="password" id="password" class="form-input" placeholder="Password" required>
+                    <button type="button" class="password-toggle" onclick="togglePassword()">
+                        <span class="material-icons" id="password-icon">visibility_off</span>
+                    </button>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; margin-bottom: 24px; font-size: 14px;">
+                    <label style="display: flex; align-items: center; gap: 8px; color: var(--md-sys-color-outline);">
+                        <input type="checkbox" style="accent-color: var(--md-sys-color-primary);"> Remember me
+                    </label>
+                    <a href="#" style="color: var(--md-sys-color-primary); text-decoration: none;">Forgot Password?</a>
+                </div>
+
+                <div id="login-error" class="alert" style="display: none; background: var(--md-sys-color-error); color: var(--md-sys-color-on-error);">
+                    <span class="material-icons">error</span>
+                    <span id="error-message"></span>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 16px;">
+                    <span id="login-btn-text">Sign In</span>
+                    <span id="login-loading" class="loading" style="display: none;"></span>
+                </button>
+
+                <div style="text-align: center; font-size: 14px; color: var(--md-sys-color-outline);">
+                    Don't have an account? <a href="#" style="color: var(--md-sys-color-primary); text-decoration: none;">Sign up</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Enhanced Main App -->
+    <div class="app-container" id="app-content">
+        <header class="app-header">
+            <div class="header-content">
+                <div class="app-logo">
+                    <span class="material-icons">science</span>
+                    AI Test Case Generator
+                </div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <span style="color: var(--md-sys-color-outline);">Welcome back, Admin</span>
+                    <button class="btn" style="padding: 8px 16px; background: var(--google-grey-100);" onclick="logout()">
+                        <span class="material-icons">logout</span>
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <span class="material-icons">settings</span>
+                        Configuration
+                    </h3>
+                    <label for="domain-select" style="font-size: 14px; color: var(--md-sys-color-outline); margin-bottom: 8px; display: block;">Domain:</label>
+                    <select id="domain-select" class="form-select">
+                        <option value="general">General</option>
+                        <option value="embedded">Embedded Systems</option>
+                        <option value="thermal">Thermal Management</option>
+                        <option value="safety">Safety Critical</option>
+                    </select>
+                    <button class="btn btn-primary" style="width: 100%; padding: 12px;">
+                        <span class="material-icons">auto_fix_high</span>
+                        Auto-Detect Domain
+                    </button>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <span class="material-icons">tune</span>
+                        Advanced Options
+                    </h3>
+                    <label for="test-cases-slider" style="font-size: 14px; color: var(--md-sys-color-outline); margin-bottom: 8px; display: block;">Test Cases: <span id="slider-value">3</span></label>
+                    <input type="range" id="test-cases-slider" class="form-range" min="1" max="10" value="3" oninput="document.getElementById('slider-value').textContent = this.value">
+                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 16px;">
+                        <input id="use-ai-checkbox" type="checkbox" checked style="accent-color: var(--md-sys-color-primary);">
+                        <span style="font-size: 14px;">Use AI Generation</span>
+                    </label>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">
+                        <span class="material-icons">code</span>
+                        Examples
+                    </h3>
+                    <select class="form-select">
+                        <option>Select example...</option>
+                        <option>Thermal Monitoring</option>
+                        <option>Safety System</option>
+                        <option>API Testing</option>
+                    </select>
+                </div>
+            </aside>
+
+            <main class="main-content">
+                <h1 class="page-title">
+                    <span class="material-icons" style="font-size: 48px; vertical-align: middle; margin-right: 16px;">science</span>
+                    AI Test Case Generator
+                </h1>
+                <p class="page-subtitle">Generate comprehensive test cases for any domain with advanced AI</p>
+
+                <div class="content-grid">
+                    <div>
+                        <label style="font-size: 18px; font-weight: 500; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-icons">description</span>
+                            Requirement / User Story
+                        </label>
+                        <textarea id="story-input" class="textarea-enhanced" placeholder="Describe your requirement or user story in detail...
+
+Example: As a system administrator, I need to monitor thermal zones to prevent overheating and ensure optimal performance..."></textarea>
+                        <div class="alert alert-info">
+                            <span class="material-icons">info</span>
+                            <strong>Detected Domain:</strong> GENERAL
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h3 style="margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-icons">lightbulb</span>
+                            Best Practices
+                        </h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 8px 0; display: flex; align-items: center; gap: 8px;">
+                                <span class="material-icons" style="color: var(--md-sys-color-secondary); font-size: 16px;">check_circle</span>
+                                Include specific details and constraints
+                            </li>
+                            <li style="padding: 8px 0; display: flex; align-items: center; gap: 8px;">
+                                <span class="material-icons" style="color: var(--md-sys-color-secondary); font-size: 16px;">check_circle</span>
+                                Mention error conditions and edge cases
+                            </li>
+                            <li style="padding: 8px 0; display: flex; align-items: center; gap: 8px;">
+                                <span class="material-icons" style="color: var(--md-sys-color-secondary); font-size: 16px;">check_circle</span>
+                                Define expected outcomes clearly
+                            </li>
+                            <li style="padding: 8px 0; display: flex; align-items: center; gap: 8px;">
+                                <span class="material-icons" style="color: var(--md-sys-color-secondary); font-size: 16px;">check_circle</span>
+                                Specify performance requirements
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" style="width: 100%; padding: 20px; font-size: 18px; margin-bottom: 32px;" onclick="generateTestCases()">
+                    <span class="material-icons">auto_fix_high</span>
+                    Generate Test Cases
+                    <span id="generate-loading" class="loading" style="display: none; margin-left: 12px;"></span>
+                </button>
+
+                <div id="results-section" style="display: none;">
+                    <div class="alert alert-success">
+                        <span class="material-icons">celebration</span>
+                        <strong>Successfully generated 3 comprehensive test cases!</strong>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">Test Cases</div>
+                            <div class="metric-value">3</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Domain</div>
+                            <div class="metric-value" style="font-size: 20px;">THERMAL</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">High Priority</div>
+                            <div class="metric-value">1</div>
+                        </div>
+                    </div>
+
+                    <h2 style="margin: 40px 0 24px; display: flex; align-items: center; gap: 12px;">
+                        <span class="material-icons">assignment</span>
+                        Generated Test Cases
+                    </h2>
+
+                    <div class="test-case" onclick="toggleTestCase(this)">
+                        <div class="test-case-header">
+                            <span>TC-1: Verify successful temperature query for thermal zone <span class="priority-high">(High)</span></span>
+                            <span class="material-icons">expand_more</span>
+                        </div>
+                        <div class="test-case-content">
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                                <div>
+                                    <strong>Description:</strong> Test temperature retrieval for supported thermal zones<br><br>
+                                    <strong>Type:</strong> Functional | <strong>Domain:</strong> Thermal<br><br>
+                                    <strong>Preconditions:</strong> Thermal zone supported, system in normal state
+                                </div>
+                                <div>
+                                    <strong>Steps:</strong> 1. Open connection to thermal zone 2. Query temperature 3. Validate response<br><br>
+                                    <strong>Expected:</strong> API returns success with valid temperature values<br><br>
+                                    <strong>Data:</strong> Valid thermal zone name, expected temperature range
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="test-case" onclick="toggleTestCase(this)">
+                        <div class="test-case-header">
+                            <span>TC-2: Verify timestamp accuracy for temperature queries <span class="priority-medium">(Medium)</span></span>
+                            <span class="material-icons">expand_more</span>
+                        </div>
+                        <div class="test-case-content">
+                            <strong>Description:</strong> Test that timestamps are properly recorded and accurate for temperature monitoring
+                        </div>
+                    </div>
+
+                    <div class="test-case" onclick="toggleTestCase(this)">
+                        <div class="test-case-header">
+                            <span>TC-3: Verify error handling for invalid thermal zones <span class="priority-high">(High)</span></span>
+                            <span class="material-icons">expand_more</span>
+                        </div>
+                        <div class="test-case-content">
+                            <strong>Description:</strong> Test proper error handling for non-existent zones and invalid parameters
+                        </div>
+                    </div>
+
+                    <div class="download-section">
+                        <button class="btn btn-download" onclick="downloadExcel()">
+                            <span class="material-icons">file_download</span>
+                            Download Excel
+                        </button>
+                        <button class="btn btn-download" onclick="downloadJSON()">
+                            <span class="material-icons">code</span>
+                            Download JSON
+                        </button>
+                        <button class="btn btn-download" onclick="downloadCSV()">
+                            <span class="material-icons">table_view</span>
+                            Download CSV
+                        </button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // API configuration
+        const API_BASE = (window.API_BASE_OVERRIDE) || 'http://localhost:8000';
+        let lastResults = [];
+        // Skip login by default and show app directly
+        document.addEventListener('DOMContentLoaded', () => {
+            const login = document.getElementById('login-page');
+            const app = document.getElementById('app-content');
+            if (login && app) {
+                login.style.display = 'none';
+                app.style.display = 'block';
+            }
+        });
+        function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const errorBox = document.getElementById('login-error');
+            const errorMessage = document.getElementById('error-message');
+            const btnText = document.getElementById('login-btn-text');
+            const loading = document.getElementById('login-loading');
+
+            errorBox.style.display = "none";
+
+            if (!username || !password) {
+                errorMessage.textContent = "Username and password are required!";
+                errorBox.style.display = "flex";
+                return false;
+            }
+
+            // Show loading
+            btnText.style.display = "none";
+            loading.style.display = "inline-block";
+
+            setTimeout(() => {
+                if (username === "admin" && password === "admin123") {
+                    document.getElementById('login-page').style.display = "none";
+                    document.getElementById('app-content').style.display = "block";
+                } else {
+                    errorMessage.textContent = "Invalid credentials! Try admin / admin123";
+                    errorBox.style.display = "flex";
+                    btnText.style.display = "inline";
+                    loading.style.display = "none";
+                }
+            }, 1500);
+
+            return false;
+        }
+
+        function togglePassword() {
+            const pwd = document.getElementById('password');
+            const icon = document.getElementById('password-icon');
+            
+            if (pwd.type === "password") {
+                pwd.type = "text";
+                icon.textContent = "visibility";
+            } else {
+                pwd.type = "password";
+                icon.textContent = "visibility_off";
+            }
+        }
+
+        function socialLogin(provider) {
+            alert(`${provider} integration would be implemented here with OAuth 2.0`);
+        }
+
+        function generateTestCases() {
+            const loading = document.getElementById('generate-loading');
+            loading.style.display = "inline-block";
+
+            const story = document.getElementById('story-input').value.trim();
+            const domain = document.getElementById('domain-select').value;
+            const count = parseInt(document.getElementById('test-cases-slider').value, 10);
+            const useAi = document.getElementById('use-ai-checkbox').checked;
+
+            fetch(`${API_BASE}/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_story: story,
+                    domain: domain,
+                    count: count,
+                    use_ai: useAi,
+                    id_prefix: 'TC'
+                })
+            })
+            .then(async (res) => {
+                if (!res.ok) throw new Error(`API error ${res.status}`);
+                return res.json();
+            })
+            .then((data) => {
+                lastResults = Array.isArray(data) ? data : [];
+                renderResults(lastResults);
+            })
+            .catch((err) => {
+                alert(`Failed to generate: ${err.message}`);
+            })
+            .finally(() => {
+                loading.style.display = "none";
+            });
+        }
+
+        function renderResults(results) {
+            const resultsSection = document.getElementById('results-section');
+            resultsSection.style.display = 'block';
+
+            // Update metrics
+            const totalEl = document.querySelector('.metrics-grid .metric-card:nth-child(1) .metric-value');
+            const domainEl = document.querySelector('.metrics-grid .metric-card:nth-child(2) .metric-value');
+            const highEl = document.querySelector('.metrics-grid .metric-card:nth-child(3) .metric-value');
+            const domain = (results[0]?.domain || 'GENERAL').toString().toUpperCase();
+            const highCount = results.filter(r => (r.priority || '').toLowerCase() === 'high').length;
+            if (totalEl) totalEl.textContent = results.length.toString();
+            if (domainEl) domainEl.textContent = domain;
+            if (highEl) highEl.textContent = highCount.toString();
+
+            // List container
+            let list = document.getElementById('generated-list');
+            if (!list) {
+                list = document.createElement('div');
+                list.id = 'generated-list';
+                const h2 = Array.from(resultsSection.querySelectorAll('h2')).find(h => h.textContent.includes('Generated Test Cases'));
+                (h2?.parentElement || resultsSection).appendChild(list);
+            }
+            list.innerHTML = '';
+
+            results.forEach((tc) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'test-case';
+                wrapper.innerHTML = `
+                    <div class="test-case-header" onclick="toggleTestCase(this.parentElement)">
+                        <span>${tc.external_id || ('TC-' + tc.id)}: ${tc.test_title} <span class="${(tc.priority||'').toLowerCase()==='high'?'priority-high':(tc.priority||'').toLowerCase()==='medium'?'priority-medium':''}">(${tc.priority||''})</span></span>
+                        <span class="material-icons">expand_more</span>
+                    </div>
+                    <div class="test-case-content">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                            <div>
+                                <strong>Description:</strong> ${tc.description || ''}<br><br>
+                                <strong>Type:</strong> ${tc.test_type || ''} | <strong>Domain:</strong> ${tc.domain || ''}<br><br>
+                                <strong>Preconditions:</strong> ${tc.preconditions || ''}
+                            </div>
+                            <div>
+                                <strong>Steps:</strong>
+                                <ol>${(tc.test_steps||[]).map(s => `<li>${s}</li>`).join('')}</ol>
+                                <strong>Expected:</strong> ${tc.expected_result || ''}<br><br>
+                                <strong>Data:</strong> ${tc.test_data || ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(wrapper);
+            });
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function toggleTestCase(element) {
+            const icon = element.querySelector('.material-icons');
+            element.classList.toggle('expanded');
+            icon.textContent = element.classList.contains('expanded') ? 'expand_less' : 'expand_more';
+        }
+
+        function logout() {
+            document.getElementById('app-content').style.display = "none";
+            document.getElementById('login-page').style.display = "flex";
+            document.getElementById('username').value = "";
+            document.getElementById('password').value = "";
+        }
+
+        // CSV Generation and Download Function
+        function generateCSV() {
+            const headers = ['Test Case ID', 'Title', 'Description', 'Type', 'Domain', 'Priority', 'Preconditions', 'Test Steps', 'Expected Result', 'Test Data', 'Comments'];
+            
+            // Sample test case data
+            const csvData = [
+                ['TC-1', 'Verify successful temperature query for thermal zone', 'Test temperature retrieval for supported thermal zones', 'Functional', 'Thermal', 'High', 'Thermal zone supported, system in normal state', '1. Open connection to thermal zone 2. Query temperature 3. Validate response', 'API returns success with valid temperature values', 'Valid thermal zone name, expected temperature range', 'Validates core thermal monitoring functionality'],
+                ['TC-2', 'Verify timestamp accuracy for temperature queries', 'Test that timestamps are properly recorded and accurate for temperature monitoring', 'Functional', 'Thermal', 'Medium', 'System time synchronized', '1. Query temperature with timestamp 2. Compare with system time 3. Validate accuracy', 'Timestamp within acceptable tolerance', 'System time reference', 'Ensures temporal data integrity'],
+                ['TC-3', 'Verify error handling for invalid thermal zones', 'Test proper error handling for non-existent zones and invalid parameters', 'Negative', 'Thermal', 'High', 'System initialized', '1. Query invalid thermal zone 2. Verify error response 3. Check error codes', 'Proper error message and code returned', 'Invalid zone names, malformed requests', 'Tests system robustness']
+            ];
+            
+            // Convert to CSV format
+            let csvContent = headers.join(',') + '\n';
+            csvData.forEach(row => {
+                const escapedRow = row.map(field => {
+                    const escaped = String(field).replace(/"/g, '""');
+                    return (escaped.includes(',') || escaped.includes('\n') || escaped.includes('"')) ? '"' + escaped + '"' : escaped;
+                });
+                csvContent += escapedRow.join(',') + '\n';
+            });
+            
+            return csvContent;
+        }
+
+        function downloadCSV() {
+            // If API is available, stream server export for consistency
+            window.open(`${API_BASE}/export/csv`, '_blank');
+        }
+
+        function downloadJSON() {
+            const payload = { test_cases: lastResults, metadata: { generated_at: new Date().toISOString(), total_cases: lastResults.length } };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'test_cases.json');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadExcel() {
+            window.open(`${API_BASE}/export/excel`, '_blank');
+        }
+    </script>
+</body>
+</html>
