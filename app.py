@@ -363,53 +363,45 @@ def generate_thermal_test_cases(user_story: str, count: int = 5) -> List[dict]:
         }
     ]
 
-def generate_mock_test_cases(user_story: str, domain: str = "general", count: int = 3) -> List[dict]:
-    """Enhanced mock test case generator with domain support"""
-    if domain == "thermal":
-        return generate_thermal_test_cases(user_story, count)
+def generate_mock_test_cases(user_story: str, domain: str = "general", count: int = 5) -> List[dict]:
+    """Generate mock test cases with unique outputs based on input"""
+    import hashlib
     
-    # General test cases for other domains
-    return [
-        {
-            "test_case_id": 1,
-            "test_title": f"Functional Test - {user_story[:25]}...",
-            "description": f"Validate main functionality: {user_story}",
-            "preconditions": "System is available and test environment ready",
-            "test_steps": ["Navigate to feature", "Perform primary action", "Verify results"],
-            "test_data": "Valid input data, typical usage scenario",
-            "expected_result": "Function works as expected without errors",
-            "priority": "High",
-            "test_type": "Functional",
+    # Create a unique hash from the input to generate consistent but unique test cases
+    input_hash = hashlib.md5(f"{user_story[:100]}_{domain}".encode()).hexdigest()
+    
+    # Generate test cases with variations based on the input
+    test_cases = []
+    for i in range(1, count + 1):
+        # Create a unique ID based on the input
+        case_id = int(input_hash[:8], 16) % 10000 + i
+        
+        test_cases.append({
+            "test_case_id": i,
+            "test_title": f"TC-{case_id}: Verify " + 
+                         f"{domain} - " + 
+                         f"{user_story[:30]}{'...' if len(user_story) > 30 else ''}",
+            "description": f"Test case for validating: {user_story[:100]}",
+            "preconditions": [
+                f"System is in {domain} mode",
+                "Test environment is properly configured",
+                f"Test data for case {i} is available"
+            ],
+            "test_steps": [
+                f"1. Navigate to {domain} section",
+                f"2. Input test data for: {user_story[:50]}",
+                "3. Execute the test action",
+                "4. Verify the results match expected behavior"
+            ],
+            "test_data": f"Test dataset {i} for {domain}",
+            "expected_result": f"System should handle {domain} scenario {i} correctly",
+            "priority": ["High", "Medium", "Low"][case_id % 3],
+            "test_type": ["Functional", "Regression", "Integration", "Performance"][case_id % 4],
             "domain": domain,
-            "comments": "Primary functionality validation"
-        },
-        {
-            "test_case_id": 2,
-            "test_title": f"Error Handling Test - {user_story[:25]}...",
-            "description": f"Test error scenarios for: {user_story}",
-            "preconditions": "System is available",
-            "test_steps": ["Provide invalid input", "Attempt operation", "Check error handling"],
-            "test_data": "Invalid data, edge cases",
-            "expected_result": "Appropriate error messages displayed",
-            "priority": "Medium",
-            "test_type": "Negative",
-            "domain": domain,
-            "comments": "Error scenario validation"
-        },
-        {
-            "test_case_id": 3,
-            "test_title": f"Performance Test - {user_story[:25]}...",
-            "description": f"Test performance characteristics for: {user_story}",
-            "preconditions": "System under normal load",
-            "test_steps": ["Execute operation multiple times", "Measure response times", "Check resource usage"],
-            "test_data": "Typical workload, performance thresholds",
-            "expected_result": "Performance meets specified requirements",
-            "priority": "Medium",
-            "test_type": "Performance",
-            "domain": domain,
-            "comments": "Performance validation"
-        }
-    ]
+            "comments": f"Generated from mock data - {domain} test #{i}"
+        })
+    
+    return test_cases
 
 def create_test_case_generator(domain: str = "general", model: str = "llama-3.1-8b-instant", temperature: float = 0.2, max_tokens: int = 4000, timeout: int = 30):
     """Create AI client. Uses a safe interface without structured_output (beta)."""
@@ -540,6 +532,7 @@ def main():
             st.caption(f"AI backend: {backend_status}")
             st.info("Enable to use GROQ API for intelligent test case generation; otherwise uses mock generation.")
             extra_instructions = st.text_area("Custom guidance for the AI (optional)", placeholder="E.g., include boundary value analysis and OWASP ASVS checks")
+            debug_mode = st.toggle("Debug mode", value=False, help="Show raw API responses and debug info")
             id_prefix = st.text_input("ID prefix", value="TC", help="Prefix used to build external IDs like TC-001")
 
         # Session import/export
