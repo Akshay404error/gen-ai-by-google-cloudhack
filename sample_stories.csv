@@ -1,0 +1,6 @@
+user_story
+As a system administrator, I need to monitor thermal zones and retrieve two consecutive temperature values with timestamps to prevent overheating.
+As a firmware engineer, I want the device driver to handle hardware interrupts and return proper error codes for invalid IOCTL operations.
+As a safety officer, I need the system to implement redundancy and fault detection with automatic recovery to meet ISO 26262.
+As a user, I want to sign up and login so I can access my dashboard securely with MFA.
+As an analyst, I want to export generated test cases to CSV/Excel so I can review them offline.

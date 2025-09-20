@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 from io import BytesIO, StringIO
 import time
@@ -13,8 +12,13 @@ import json
 import re
 from openpyxl.styles import PatternFill
 
-# Load environment variables
-load_dotenv()
+# Load environment variables from .env located next to this file
+_ENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
+try:
+    load_dotenv(dotenv_path=_ENV_PATH, override=False)
+except Exception:
+    # Fallback to default lookup if explicit path fails
+    load_dotenv()
 
 # Configure page
 st.set_page_config(
@@ -494,13 +498,6 @@ def main():
     # Sidebar
     with st.sidebar:
         st.header("⚙️ Configuration")
-        st.subheader("UI Mode")
-        ui_mode = st.radio(
-            "Choose interface:",
-            ["Streamlit", "Google Edition (beta)"],
-            index=1,
-            help="Use the Google-themed single-page frontend (static demo) or the native Streamlit UI"
-        )
         
         mode = st.radio("Mode:", ["Single", "Batch"], horizontal=True, help="Batch lets you upload a file of multiple user stories")
 
@@ -585,8 +582,6 @@ def main():
     auto_generate = False
     params = st.experimental_get_query_params()
     if params.get("generate", ["0"]) == ["1"]:
-        # Force native UI to display results
-        ui_mode = "Streamlit"
         try:
             # Populate session state
             story = params.get("story", [""])[0]
@@ -607,16 +602,7 @@ def main():
         except Exception as e:
             st.warning(f"Failed to parse query params: {e}")
 
-    # If Google Edition UI selected (and no auto-generate), render the static HTML and exit
-    if ui_mode == "Google Edition (beta)" and not auto_generate:
-        try:
-            html_path = os.path.join(os.path.dirname(__file__), "frontend.html")
-            with open(html_path, "r", encoding="utf-8") as f:
-                html_content = f.read()
-            components.html(html_content, height=1100, scrolling=True)
-            return
-        except Exception as e:
-            st.error(f"Failed to load Google Edition frontend: {e}")
+    # Always use Streamlit UI; the static HTML frontend is disabled
 
     # Main content
     col1, col2 = st.columns([3, 1])

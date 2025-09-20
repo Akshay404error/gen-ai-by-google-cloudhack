@@ -20,12 +20,12 @@ This project was developed for the **Google Cloud Hackathon**, focusing on **AI-
 - **⚡ Real-time Processing**: Instant test case generation with progress indicators
 - **🔧 Two Testing Modes**: Generate test cases OR run comprehensive system tests
 - **🌐 REST API**: First-class FastAPI backend with rich endpoints, pagination, filtering, and stats
-- **📱 User-Friendly Interface**: Streamlit UI or direct static HTML frontend (`frontend.html`)
+- **📱 User-Friendly Interface**: Streamlit UI (Streamlit-only; static HTML frontend removed)
 - **☁️ Cloud-Native**: Designed for Google Cloud Platform deployment
 
 ### What's New (Sep 2025)
 
-- Google-themed UI: Select `Google Edition (beta)` from the sidebar to load `frontend.html` via Streamlit Components.
+- Streamlit-only UI: removed the Google Edition static HTML frontend.
 - Caching: Repeats of the same story + settings are cached for faster runs.
 - Inline Editing: Toggle "Enable inline editing" to adjust generated cases directly before export.
 - Excel+ Summary: Exports now include a Summary sheet and highlight High priority rows.
@@ -65,35 +65,23 @@ This project was developed for the **Google Cloud Hackathon**, focusing on **AI-
    ```
 
 3. **Environment Configuration**
-   Create a `.env` file with your credentials:
+   Create a `.env` file placed in the project root (next to `app.py`). The app explicitly loads this path:
    ```env
    GROQ_API_KEY=YOUR_GROQ_API_KEY
    LANGCHAIN_API_KEY=YOUR_LANGCHAIN_API_KEY
    GOOGLE_CLOUD_PROJECT=your-google-cloud-project-id
+   DATABASE_URL=sqlite:///./app.db
    ```
-   Note: Do not commit real API keys to source control. Use environment variables or Google Secret Manager in production.
+   Notes:
+   - Do not commit real API keys to source control.
+   - `app.py` calls `load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))` so it reliably picks up variables when launching Streamlit from any working directory.
+   - Use environment variables or Google Secret Manager in production.
 
-4. **Run the Application**
-
-   Option A — Streamlit (legacy UI):
+4. **Run the Application (Streamlit UI)**
    ```bash
    streamlit run app.py
    ```
    - Open the app in your browser (e.g., http://localhost:8501).
-
-   Option B — FastAPI + Static Frontend (no Streamlit):
-   ```bash
-   # 1) Create .env from example (optional)
-   copy .env.example .env   # Windows
-   # 2) Install deps
-   pip install -r requirements.txt
-   # 3) Start API server
-   uvicorn server:app --reload --host 0.0.0.0 --port 8000
-   ```
-
-   - Then open `frontend.html` directly in your browser (double-click the file or drag-drop into a tab).
-   - The HTML will call the API at `http://localhost:8000` via `fetch()`.
-   - If you run the API elsewhere, set `window.API_BASE_OVERRIDE` in devtools console to your URL.
 
    API docs: once the API is running, open Swagger UI at:
    - http://localhost:8000/docs
@@ -187,7 +175,6 @@ Google Cloud Platform
 
 Application Stack
     ├── Frontend: Streamlit UI
-    ├── Optional Google Edition Frontend: `frontend.html` via `streamlit.components.v1`
     ├── Backend: Python FastAPI
     ├── AI Engine: LangGraph + Groq LLM
     └── Export: Pandas + OpenPyXL
@@ -308,24 +295,14 @@ curl -X POST http://localhost:8000/generate `
   -d '{"user_story":"As a user, ...","use_ai":false}'
 ```
 
-### Frontend (no Streamlit)
-- Start API:
-  ```powershell
-  uvicorn server:app --reload --host 0.0.0.0 --port 8000
-  ```
-- Open `frontend.html` directly:
-  ```powershell
-  start .\frontend.html
-  ```
-  If your browser blocks `file://` fetches, serve it:
-  ```powershell
-  python -m http.server 5500
-  start http://localhost:5500/frontend.html
-  ```
-  The frontend will call `http://localhost:8000` by default. To override at runtime (DevTools console):
-  ```js
-  window.API_BASE_OVERRIDE = 'http://localhost:8000';
-  ```
+### Backend API (Optional)
+If you want to use or test the FastAPI backend directly (optional):
+```powershell
+uvicorn server:app --reload --host 0.0.0.0 --port 8000
+```
+Open Swagger UI:
+- http://localhost:8000/docs
+- http://localhost:8000/redoc
 
 ### Troubleshooting
 - 0.0.0.0 in browser: use `http://localhost:8000` instead. `0.0.0.0` is a server bind address, not routable from a browser.
