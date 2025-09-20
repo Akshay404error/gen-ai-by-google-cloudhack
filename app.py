@@ -412,14 +412,12 @@ def generate_mock_test_cases(user_story: str, domain: str = "general", count: in
     ]
 
 def create_test_case_generator(domain: str = "general", model: str = "llama-3.1-8b-instant", temperature: float = 0.2, max_tokens: int = 4000, timeout: int = 30):
-    """Create AI test case generator with domain-specific tuning"""
+    """Create AI client. Uses a safe interface without structured_output (beta)."""
     try:
-        # Ensure API key is present; otherwise, fall back to mock generation
         groq_key = os.getenv("GROQ_API_KEY", "").strip()
         if not groq_key:
             st.warning("GROQ_API_KEY not set. Falling back to mock test case generation.")
             return None
-
         llm = ChatGroq(
             model=model,
             temperature=temperature,
@@ -427,66 +425,60 @@ def create_test_case_generator(domain: str = "general", model: str = "llama-3.1-
             timeout=timeout,
             max_retries=2,
         )
-        
-        return llm.with_structured_output(OutputSchema)
-        
+        return llm
     except Exception as e:
         st.error(f"Failed to initialize AI model: {e}")
         return None
 
 def generate_ai_test_cases(user_story: str, domain: str = "general", count: int = 5, *, model: str = "llama-3.1-8b-instant", temperature: float = 0.2, max_tokens: int = 4000, timeout: int = 30, extra_instructions: str = "") -> List[dict]:
-    """Generate test cases using AI with domain awareness"""
+    """Generate test cases using AI with a robust JSON parsing fallback."""
     try:
-        generator = create_test_case_generator(domain, model=model, temperature=temperature, max_tokens=max_tokens, timeout=timeout)
-        if not generator:
+        llm = create_test_case_generator(domain, model=model, temperature=temperature, max_tokens=max_tokens, timeout=timeout)
+        if not llm:
             return generate_mock_test_cases(user_story, domain, count)
-        
-        prompt = f"""
-        {DOMAIN_PROMPTS.get(domain, DOMAIN_PROMPTS['general'])}
-        
-        User Story/Requirement: {user_story}
-        
-        Generate {count} comprehensive test cases. For each test case, include:
-        - Unique test case ID
-        - Descriptive title indicating test purpose
-        - Detailed description of what is being tested
-        - Clear preconditions and setup requirements
-        - Step-by-step test steps (as list)
-        - Required test data and inputs
-        - Expected results and validation criteria
-        - Priority level (High, Medium, Low)
-        - Test type (Functional, Negative, Performance, etc.)
-        - Domain context ({domain})
-        - Additional comments and observations
-        
-        Focus on {domain}-specific testing aspects and include both positive and negative scenarios.
-        
-        Additional instructions (if any): {extra_instructions}
-        """
-        
-        response = generator.invoke(prompt)
-        test_cases = response.test_cases if hasattr(response, 'test_cases') else []
-        
-        # Convert to list of dictionaries
-        test_cases_dicts = []
-        for i, test_case in enumerate(test_cases, 1):
-            if hasattr(test_case, 'dict'):
-                tc_dict = test_case.dict()
-            else:
-                tc_dict = test_case
-            tc_dict['test_case_id'] = i
-            # Normalize steps to a list of strings
-            steps = tc_dict.get('test_steps')
+
+        prompt = (
+            f"{DOMAIN_PROMPTS.get(domain, DOMAIN_PROMPTS['general'])}\n"
+            f"User Story/Requirement: {user_story}\n\n"
+            f"Return exactly a JSON array with {count} objects. Each object MUST have keys: "
+            f"test_title, description, preconditions, test_steps (array), test_data, expected_result, "
+            f"priority, test_type, domain, comments. Use domain='{domain}'. {extra_instructions}"
+        )
+
+        res = llm.invoke(prompt)
+        text = getattr(res, "content", None) or str(res)
+        # Extract JSON array safely
+        start = text.find("[")
+        end = text.rfind("]")
+        data = []
+        if start != -1 and end != -1 and end > start:
+            import json as _json
+            try:
+                data = _json.loads(text[start:end+1])
+            except Exception:
+                data = []
+        if not isinstance(data, list):
+            data = []
+        if not data:
+            return generate_mock_test_cases(user_story, domain, count)
+
+        # Normalize results
+        out: List[dict] = []
+        for i, tc in enumerate(data, 1):
+            try:
+                tc = dict(tc)
+            except Exception:
+                continue
+            tc['test_case_id'] = i
+            steps = tc.get('test_steps')
             if isinstance(steps, str):
-                # Split on newlines or numbered list patterns
                 parts = [s.strip(" -\t") for s in re.split(r"\n|\r|\d+\.|\- ", steps) if s and s.strip()]
-                tc_dict['test_steps'] = parts
-            elif steps is None:
-                tc_dict['test_steps'] = []
-            test_cases_dicts.append(tc_dict)
-        
-        return test_cases_dicts[:count]
-        
+                tc['test_steps'] = parts
+            elif not isinstance(steps, list) or steps is None:
+                tc['test_steps'] = []
+            tc['domain'] = domain
+            out.append(tc)
+        return out[:count]
     except Exception as e:
         st.error(f"AI generation failed: {e}")
         return generate_mock_test_cases(user_story, domain, count)
@@ -542,9 +534,11 @@ def main():
                 min_value=1, max_value=10, value=num_default
             )
             
-            use_ai = st.toggle("Use AI Generation", value=st.session_state.get("use_ai_override", True))
+            use_ai = st.toggle("Use AI Generation", value=st.session_state.get("use_ai_override", False))
             
-            st.info("AI uses GROQ API for intelligent test case generation")
+            backend_status = "Groq enabled" if os.getenv("GROQ_API_KEY", "").strip() else "Mock mode (no GROQ_API_KEY)"
+            st.caption(f"AI backend: {backend_status}")
+            st.info("Enable to use GROQ API for intelligent test case generation; otherwise uses mock generation.")
             extra_instructions = st.text_area("Custom guidance for the AI (optional)", placeholder="E.g., include boundary value analysis and OWASP ASVS checks")
             id_prefix = st.text_input("ID prefix", value="TC", help="Prefix used to build external IDs like TC-001")
 
