@@ -41,7 +41,63 @@ This project was developed for the **Google Cloud Hackathon**, focusing on **AI-
 - **Data Processing**: Pandas, OpenPyXL
 - **Validation**: Pydantic
 - **Testing**: Pytest
+- **Performance Testing**: Custom framework with CPU/GPU monitoring
 - **Secret Management**: Google Secret Manager
+
+## 🚀 Performance Testing Framework
+
+Our performance testing framework provides comprehensive metrics and analysis for the test case generation system, including:
+
+### Key Features
+- **Resource Monitoring**: Tracks CPU and GPU usage during test execution
+- **Performance Metrics**: Measures response times, throughput, and token generation
+- **Automated Reporting**: Generates detailed markdown reports with visual charts
+- **Test Prioritization**: Supports running tests by priority (critical, high, medium)
+- **Comparison Testing**: Compares AI-generated vs mock test cases
+
+### Getting Started
+
+1. **Install Dependencies**:
+   ```bash
+   pip install psutil pynvml matplotlib
+   ```
+
+2. **Run Performance Tests**:
+   ```bash
+   python performance_test_clean.py
+   ```
+
+### Test Categories
+
+1. **Critical Tests**
+   - API Endpoints
+   - Security Scans
+
+2. **High Priority Tests**
+   - User Authentication
+   - Database CRUD Operations
+   - Third-party Integrations
+   - Boundary Testing
+
+3. **Medium Priority Tests**
+   - Load Testing
+   - UI/UX Testing
+
+### Generated Reports
+
+After running the tests, you'll find:
+- `performance_report.md`: Detailed test results and analysis
+- Response time comparison charts
+- Resource usage graphs (CPU/GPU)
+- Throughput analysis
+
+### Customization
+
+Edit `performance_test_clean.py` to:
+- Add new test cases
+- Adjust test parameters
+- Modify monitoring intervals
+- Customize reporting
 
 ## 📦 Installation & Setup
 

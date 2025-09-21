@@ -1,5 +1,0 @@
-When a request to retrieve the temperature of a thermal zone is made, the system shall return two consecutive readings with preserved resolution and timestamps.
-The device driver shall manage hardware interrupts and provide timeouts plus error codes for invalid operations.
-The safety-critical module shall perform fault detection and automatic recovery to maintain system availability.
-The REST API shall support CRUD operations with authentication, validation, and proper error handling.
-The ecommerce application shall allow registered users to search products by name, category, and price range.
